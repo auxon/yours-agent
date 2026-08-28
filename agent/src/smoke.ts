@@ -33,7 +33,21 @@ async function main(): Promise<void> {
   resetRuntime();
 
   const runtime = await getRuntime();
-  const caller = (method: string, args: unknown, originator: string) => runtime.call(method, args, originator);
+  const caller = async (method: string, args: unknown, originator: string) => {
+    if (method === 'signMessage' || method === 'signBsm') {
+      const message = String((args as { message?: string })?.message ?? '');
+      return runtime.signMessage(message, originator);
+    }
+    if (method === 'syncAddresses') {
+      const body = (args ?? {}) as { prefix?: string; count?: number; force?: boolean };
+      return runtime.syncDeposits({
+        prefix: body.prefix,
+        count: body.count,
+        force: body.force === true,
+      });
+    }
+    return runtime.call(method, args, originator);
+  };
 
   const versionRes = await handleWalletRequest(new Request('http://127.0.0.1:3321/getVersion', { method: 'POST', body: '{}' }), caller);
   const networkRes = await handleWalletRequest(new Request('http://127.0.0.1:3321/getNetwork', { method: 'GET' }), caller);
